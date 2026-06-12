@@ -164,6 +164,24 @@ class TikTokScraper:
         )
 
     def _parse_creator_from_html(self, html: str, username: str) -> Optional[TikTokCreatorData]:
+        data = self._extract_universal_data(html)
+        if data:
+            user_info = data.get("__DEFAULT_SCOPE__", {}).get("webapp.user-detail", {}).get("userInfo", {})
+            user = user_info.get("user") or {}
+            if user.get("uniqueId"):
+                stats = user_info.get("stats") or {}
+                try:
+                    followers = int(stats.get("followerCount") or stats.get("follower_count") or 0)
+                except (TypeError, ValueError):
+                    followers = 0
+                return TikTokCreatorData(
+                    username=user.get("uniqueId") or username,
+                    user_id=str(user.get("id") or ""),
+                    display_name=user.get("nickname") or username,
+                    follower_count=max(0, followers),
+                    exists=True,
+                )
+
         match = re.search(r'"uniqueId":"([^"]+)"', html)
         if not match:
             return None

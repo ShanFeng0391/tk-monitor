@@ -109,16 +109,22 @@ async def verify_creator_with_proxy(
     raw_username: str,
     *,
     fast: bool = False,
+    max_attempts: int = 3,
 ) -> TikTokCreatorData:
     """通过代理池校验 TikTok 博主（轻量云等无法直连 TikTok 的环境必需）。"""
     username = normalize_creator_username(raw_username)
-    async with proxy_pool.scrape_session(db, task_key=username) as session:
-        info = await scraper.verify_creator(username, fast=fast)
-        if info.exists:
-            session.mark_success()
-        else:
+    last = TikTokCreatorData(username=username, user_id="", display_name="", exists=False)
+    attempts = max(1, max_attempts)
+    for attempt in range(attempts):
+        task_key = username if attempt == 0 else f"{username}#retry{attempt}"
+        async with proxy_pool.scrape_session(db, task_key=task_key) as session:
+            info = await scraper.verify_creator(username, fast=fast)
+            if info.exists:
+                session.mark_success()
+                return info
             session.mark_failure()
-        return info
+            last = info
+    return last
 
 
 async def ensure_creator_not_duplicate(
