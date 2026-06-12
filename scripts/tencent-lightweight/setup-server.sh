@@ -10,17 +10,19 @@ DB_USER="${DB_USER:-tiktok_monitor}"
 DB_PASS="${DB_PASS:-}"
 REDIS_PASS="${REDIS_PASS:-}"
 LOCAL_CLIENT_IP="${LOCAL_CLIENT_IP:-}"
+CLIENT_IPS="${CLIENT_IPS:-$LOCAL_CLIENT_IP}"
 
 if [[ $EUID -ne 0 ]]; then
   echo "请使用 root 运行" >&2
   exit 1
 fi
 
-if [[ -z "$DB_PASS" || -z "$REDIS_PASS" ]]; then
+if [[ -z "$DB_PASS" || -z "$REDIS_PASS" || -z "$CLIENT_IPS" ]]; then
   echo "请先设置环境变量：" >&2
-  echo "  export DB_PASS='强密码'"
-  echo "  export REDIS_PASS='强密码'"
-  echo "  export LOCAL_CLIENT_IP='你的本地公网IP/32'   # 例如 1.2.3.4/32"
+  echo "  export DB_PASS='强密码'" >&2
+  echo "  export REDIS_PASS='强密码'" >&2
+  echo "  export CLIENT_IPS='本地公网IP/32,轻量2公网IP/32'" >&2
+  echo "  （兼容旧写法：export LOCAL_CLIENT_IP='单IP/32'）" >&2
   exit 1
 fi
 
@@ -50,15 +52,18 @@ sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_US
 PG_CONF="$(find /etc/postgresql -name postgresql.conf | head -1)"
 PG_HBA="$(find /etc/postgresql -name pg_hba.conf | head -1)"
 sed -i "s/^#*listen_addresses.*/listen_addresses = '*'/" "$PG_CONF"
-if [[ -n "$LOCAL_CLIENT_IP" ]]; then
-  if ! grep -q "tiktok-monitor-local" "$PG_HBA"; then
+IFS=',' read -ra IPS <<< "$CLIENT_IPS"
+for cidr in "${IPS[@]}"; do
+  cidr="$(echo "$cidr" | xargs)"
+  [[ -z "$cidr" ]] && continue
+  if ! grep -q "tiktok-monitor-${cidr}" "$PG_HBA" 2>/dev/null; then
     cat >> "$PG_HBA" <<EOF
 
-# tiktok-monitor-local
-host    ${DB_NAME}    ${DB_USER}    ${LOCAL_CLIENT_IP}    scram-sha-256
+# tiktok-monitor-${cidr}
+host    ${DB_NAME}    ${DB_USER}    ${cidr}    scram-sha-256
 EOF
   fi
-fi
+done
 systemctl restart postgresql
 
 # Redis 密码 + 仅本地与指定 IP（通过 bind 0.0.0.0 + 安全组限制）
