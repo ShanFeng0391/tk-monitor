@@ -335,6 +335,47 @@ WEB_DEPLOY_UPDATE_ENABLED=true
 
 GitHub Actions / 双击 bat 适合「无人值守自动发版」；日常你一个人维护，**Web 按钮通常最简单**。
 
+### Git 仓库（上线前必做）
+
+项目已支持 `git pull` 一键更新。首次请完成：
+
+**1. 本机设置 Git 身份（只需一次，把邮箱改成你的）**
+
+```powershell
+cd C:\Users\Administrator\Projects\tiktok-monitor
+git config user.name "你的名字"
+git config user.email "你的邮箱@example.com"
+```
+
+**2. 在 GitHub 或 Gitee 创建空仓库**（不要勾选 README）
+
+**3. 关联并推送**
+
+```powershell
+git remote add origin https://github.com/你的用户名/tiktok-monitor.git
+git push -u origin main
+```
+
+**4. 云服务器首次拉代码**
+
+```bash
+git clone https://github.com/你的用户名/tiktok-monitor.git
+cd tiktok-monitor
+cp .env.hybrid.tencent.example .env.hybrid   # 填好密钥
+```
+
+**5. 日常发版（开发电脑）**
+
+```powershell
+git add .
+git commit -m "说明这次改了什么"
+git push
+```
+
+然后在 **轻量#2 / 本地** 管理后台 → 集群监控 → **一键更新本节点**（会自动 `git pull`）。
+
+已忽略、**不会上传**的内容：`.env`、`.env.hybrid`、`data/` 数据库与封面、`.venv`、`node_modules`。
+
 ---
 
 ## 四、冒烟测试清单
