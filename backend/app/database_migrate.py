@@ -3,6 +3,7 @@ import logging
 
 from sqlalchemy import inspect, text
 
+import app.models  # noqa: F401 — 注册 ORM 表到 Base.metadata
 from app.database import engine, Base
 from app.config import get_settings
 
@@ -104,6 +105,9 @@ async def run_migrations():
 
         def _ensure_single_super_admin(sync_conn):
             """仅保留配置中的 admin 账号为超级管理员，并修正历史误升数据。"""
+            inspector = inspect(sync_conn)
+            if not inspector.has_table("users"):
+                return
             admin_username = get_settings().admin_username
             sync_conn.execute(
                 text("UPDATE users SET role = 'user' WHERE role = 'super_admin' AND username != :name"),
