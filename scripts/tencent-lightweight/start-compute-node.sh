@@ -33,10 +33,16 @@ stop() {
   for f in api beat worker; do
     pf="$ROOT/data/hybrid/$f.pid"
     if [[ -f "$pf" ]]; then
-      kill "$(cat "$pf")" 2>/dev/null || true
+      pid="$(cat "$pf")"
+      kill "$pid" 2>/dev/null || true
+      pkill -P "$pid" 2>/dev/null || true
       rm -f "$pf"
     fi
   done
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -k 8000/tcp 2>/dev/null || true
+  fi
+  sleep 2
 }
 stop
 

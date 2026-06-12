@@ -31,6 +31,10 @@ echo "=== 轻量#2 代码更新 ==="
 
 if [[ "$SKIP_GIT" != true ]] && [[ -d .git ]]; then
   branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
+  if [[ "$branch" == "master" ]] && ! git ls-remote --heads origin master 2>/dev/null | grep -q master; then
+    branch="main"
+    git checkout -B main origin/main 2>/dev/null || git branch -m master main
+  fi
   echo ">> git pull origin $branch"
   git fetch origin "$branch"
   git pull --ff-only origin "$branch"
@@ -65,8 +69,8 @@ fi
 echo ">> 重启 API + Beat + Worker"
 bash "$ROOT/scripts/tencent-lightweight/start-compute-node.sh"
 
-sleep 4
-for i in 1 2 3 4 5; do
+sleep 6
+for i in 1 2 3 4 5 6 8 10; do
   if curl -sf "http://127.0.0.1:8000/api/v1/system/health" | grep -q healthy; then
     echo "=== 更新完成，健康检查通过 ==="
     exit 0
