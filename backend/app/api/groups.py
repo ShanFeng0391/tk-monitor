@@ -13,7 +13,6 @@ from app.schemas import (
     CollectionScheduleOut, CollectionScheduleCreate, CollectionScheduleUpdate,
     HotUpdateSegmentOut, HotUpdateSegmentsReplace,
 )
-from app.services.scraper import scraper
 from app.services.collection import collection_service
 from app.services.group_helpers import (
     get_active_group,
@@ -189,10 +188,14 @@ async def add_group_creator(
     group = await get_active_group(db, group_id)
     await ensure_group_has_capacity(db, group)
 
-    from app.services.creator_input import normalize_creator_username, ensure_creator_not_duplicate
+    from app.services.creator_input import (
+        normalize_creator_username,
+        ensure_creator_not_duplicate,
+        verify_creator_with_proxy,
+    )
 
     username = normalize_creator_username(data.tiktok_username)
-    creator_info = await scraper.verify_creator(username)
+    creator_info = await verify_creator_with_proxy(db, data.tiktok_username)
     if not creator_info.exists:
         raise HTTPException(status_code=404, detail="TikTok creator not found")
 

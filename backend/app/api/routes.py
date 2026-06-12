@@ -206,10 +206,9 @@ async def _add_monitored_creator(
     if not group_id:
         raise HTTPException(status_code=400, detail="请选择博主类别")
 
-    from app.services.creator_input import normalize_creator_username
+    from app.services.creator_input import verify_creator_with_proxy
 
-    username = normalize_creator_username(raw_username)
-    creator_info = await scraper.verify_creator(username)
+    creator_info = await verify_creator_with_proxy(db, raw_username)
     return await _insert_monitored_creator(db, user, raw_username, creator_info, group_id)
 
 
@@ -261,8 +260,9 @@ async def batch_add_creators(
     async def verify_one(raw: str):
         async with sem:
             try:
-                username = normalize_creator_username(raw)
-                info = await scraper.verify_creator(username, fast=True)
+                from app.services.creator_input import verify_creator_with_proxy
+
+                info = await verify_creator_with_proxy(db, raw, fast=True)
                 return raw, info, None
             except HTTPException as exc:
                 detail = exc.detail if isinstance(exc.detail, str) else str(exc.detail)

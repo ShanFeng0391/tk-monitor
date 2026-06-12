@@ -5,6 +5,8 @@ from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import MonitoredCreator
+from app.services.scraper import TikTokCreatorData, scraper
+from app.services.proxy_pool import proxy_pool
 
 # @ 后：字母、数字、下划线、点，1~49 位
 _CREATOR_USERNAME_RE = re.compile(r"^@[A-Za-z0-9_.]{1,49}$")
@@ -100,6 +102,23 @@ async def find_duplicate_creator(
     return (await db.execute(
         select(MonitoredCreator).where(or_(*conditions))
     )).scalar_one_or_none()
+
+
+async def verify_creator_with_proxy(
+    db: AsyncSession,
+    raw_username: str,
+    *,
+    fast: bool = False,
+) -> TikTokCreatorData:
+    """通过代理池校验 TikTok 博主（轻量云等无法直连 TikTok 的环境必需）。"""
+    username = normalize_creator_username(raw_username)
+    async with proxy_pool.scrape_session(db, task_key=username) as session:
+        info = await scraper.verify_creator(username, fast=fast)
+        if info.exists:
+            session.mark_success()
+        else:
+            session.mark_failure()
+        return info
 
 
 async def ensure_creator_not_duplicate(

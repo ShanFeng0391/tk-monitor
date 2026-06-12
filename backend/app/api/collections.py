@@ -11,7 +11,6 @@ from app.schemas import (
     UserCollectionCreate, UserCollectionUpdate, UserCollectionOut,
     CreatorCreate, CreatorOut, ScrapeResultOut,
 )
-from app.services.scraper import scraper
 from app.services.collection import collection_service
 from app.services.creator_permissions import get_manageable_creator, get_owned_collection_or_403
 
@@ -161,10 +160,14 @@ async def add_collection_creator(
     if cnt >= col.max_creators:
         raise HTTPException(status_code=400, detail=f"Collection creator limit reached ({col.max_creators})")
 
-    from app.services.creator_input import normalize_creator_username, ensure_creator_not_duplicate
+    from app.services.creator_input import (
+        normalize_creator_username,
+        ensure_creator_not_duplicate,
+        verify_creator_with_proxy,
+    )
 
     username = normalize_creator_username(data.tiktok_username)
-    creator_info = await scraper.verify_creator(username)
+    creator_info = await verify_creator_with_proxy(db, data.tiktok_username)
     if not creator_info.exists:
         raise HTTPException(status_code=404, detail="TikTok creator not found")
 
