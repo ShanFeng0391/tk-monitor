@@ -35,8 +35,8 @@ body {
 }
 
 html, body, #app {
-  min-height: 100vh;
   height: 100%;
+  overflow: hidden;
 }
 
 .tm-card {

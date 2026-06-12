@@ -158,17 +158,20 @@ function handleLogout() {
 .app-layout {
   display: flex;
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  min-height: 0;
+  overflow: hidden;
   background: var(--tm-bg);
   padding: 16px;
   gap: 16px;
   box-sizing: border-box;
-  align-items: stretch;
 }
 
 .sidebar {
   width: 240px;
   flex-shrink: 0;
+  height: 100%;
   background: var(--tm-surface);
   border-radius: var(--tm-radius-lg);
   box-shadow: var(--tm-shadow-sm);
@@ -177,7 +180,6 @@ function handleLogout() {
   padding: 20px 14px;
   min-height: 0;
   overflow: hidden;
-  align-self: stretch;
 }
 
 .brand {
@@ -306,24 +308,16 @@ function handleLogout() {
   color: var(--tm-text);
 }
 
-.app-layout--fill {
-  height: 100vh;
-  max-height: 100vh;
-  min-height: 100vh;
-  overflow: hidden;
-  align-items: stretch;
-}
-
 .app-layout--fill .sidebar,
 .app-layout--fill .content-area {
   min-height: 0;
-  align-self: stretch;
 }
 
 .content-area {
   flex: 1;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -334,24 +328,8 @@ function handleLogout() {
   flex-shrink: 0;
 }
 
-.content-area--fill .page-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.content-area--fill.content-area--scroll .page-content {
-  overflow: auto;
-}
-
-.content-area--fill {
-  overflow: hidden;
-  min-height: 0;
-}
-
 .topbar {
+  flex-shrink: 0;
   background: var(--tm-surface);
   border-radius: var(--tm-radius-lg);
   box-shadow: var(--tm-shadow-sm);
@@ -378,8 +356,18 @@ function handleLogout() {
 .page-content {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+.app-layout--fill .page-content {
+  overflow: hidden;
+}
+
+.content-area--fill.content-area--scroll .page-content {
+  overflow: auto;
 }
 
 @keyframes starSpin {
@@ -391,16 +379,19 @@ function handleLogout() {
   .app-layout {
     flex-direction: column;
     padding: 10px;
-    min-height: 100vh;
-    height: auto;
-  }
-  .app-layout--fill {
-    height: auto;
-    max-height: none;
-    min-height: 100vh;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
   }
   .sidebar {
     width: 100%;
+    height: auto;
+    max-height: 40vh;
+    flex-shrink: 0;
+  }
+  .content-area {
+    flex: 1;
+    min-height: 0;
   }
   .nav {
     flex-direction: row;
