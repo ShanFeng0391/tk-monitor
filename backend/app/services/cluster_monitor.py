@@ -1,11 +1,13 @@
 """双计算节点（本地 + 轻量#2）集群状态、心跳与运维建议。"""
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import socket
 from datetime import datetime, timezone
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import func, select
@@ -54,7 +56,7 @@ def _inspect_celery() -> dict[str, Any]:
     try:
         from app.tasks.celery_app import celery_app
 
-        inspector = celery_app.control.inspect(timeout=2.5)
+        inspector = celery_app.control.inspect(timeout=1.0)
         ping = inspector.ping() or {}
         stats = inspector.stats() or {}
         by_node: dict[str, int] = {"local": 0, "cloud2": 0, "unknown": 0}
@@ -90,11 +92,28 @@ def _node_label(node_id: str) -> str:
     return node_id
 
 
+async def _inspect_celery_async() -> dict[str, Any]:
+    return await asyncio.to_thread(_inspect_celery)
+
+
+def _peer_url_points_to_self(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    if host in ("127.0.0.1", "localhost", "::1"):
+        return True
+    try:
+        local_hosts = {socket.gethostname().lower(), "127.0.0.1"}
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            local_hosts.add(info[4][0])
+        return host in local_hosts
+    except OSError:
+        return False
+
+
 async def publish_current_node_heartbeat() -> None:
     if settings.local_mode:
         return
 
-    celery = _inspect_celery()
+    celery = await _inspect_celery_async()
     node_id = settings.compute_node_id or "local"
     my_workers = celery.get("by_node", {}).get(node_id, 0)
     gw = gateway_status()
@@ -144,6 +163,14 @@ async def _check_peer_api() -> dict:
     url = (settings.cluster_peer_api_url or "").strip().rstrip("/")
     if not url:
         return {"configured": False, "reachable": None, "detail": "未配置对端 API"}
+    if _peer_url_points_to_self(url):
+        return {
+            "configured": True,
+            "reachable": True,
+            "url": url,
+            "status": "healthy",
+            "detail": "本节点 API（已跳过自连 HTTP 检测）",
+        }
     health_url = f"{url}/api/v1/system/health"
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -228,10 +255,11 @@ def _build_node_view(node_id: str, heartbeat: Optional[dict], celery: dict) -> d
     }
 
 
-async def _proxy_insights(db: AsyncSession) -> dict:
+async def _proxy_insights(db: AsyncSession, celery: dict[str, Any] | None = None) -> dict:
     rows = await proxy_pool.list_proxies(db)
     enabled = [r for r in rows if r.enabled]
-    celery = _inspect_celery()
+    if celery is None:
+        celery = await _inspect_celery_async()
     total_workers = max(1, int(celery.get("total_online") or 0))
 
     high_failure: list[dict] = []
@@ -290,7 +318,7 @@ async def _proxy_insights(db: AsyncSession) -> dict:
 
 
 async def get_cluster_status(db: AsyncSession) -> dict:
-    celery = _inspect_celery()
+    celery = await _inspect_celery_async()
     peer = await _check_peer_api()
 
     db_status = "ok"
@@ -332,7 +360,7 @@ async def get_cluster_status(db: AsyncSession) -> dict:
     if redis_status != "ok":
         alerts.append("Redis 连接异常，请检查轻量#1 上 Redis。")
 
-    proxy_insights = await _proxy_insights(db)
+    proxy_insights = await _proxy_insights(db, celery=celery)
 
     overall = "healthy"
     if db_status != "ok" or redis_status != "ok" or not any(n["online"] for n in nodes):

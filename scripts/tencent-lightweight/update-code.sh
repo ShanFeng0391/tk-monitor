@@ -66,9 +66,13 @@ echo ">> 重启 API + Beat + Worker"
 bash "$ROOT/scripts/tencent-lightweight/start-compute-node.sh"
 
 sleep 4
-if curl -sf "http://127.0.0.1:8000/api/v1/system/health" | grep -q healthy; then
-  echo "=== 更新完成，健康检查通过 ==="
-else
-  echo "=== 进程已重启，但健康检查未通过，请查看 data/logs/cloud2-*.log ===" >&2
-  exit 1
-fi
+for i in 1 2 3 4 5; do
+  if curl -sf "http://127.0.0.1:8000/api/v1/system/health" | grep -q healthy; then
+    echo "=== 更新完成，健康检查通过 ==="
+    exit 0
+  fi
+  echo ">> 等待 API 就绪 (${i}/5)..."
+  sleep 3
+done
+echo "=== 进程已重启，但健康检查未通过，请查看 data/logs/cloud2-*.log ===" >&2
+exit 1

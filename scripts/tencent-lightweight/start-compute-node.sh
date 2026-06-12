@@ -47,8 +47,12 @@ CONCURRENCY="${CELERY_WORKER_CONCURRENCY:-10}"
 if grep -q "^CELERY_WORKER_CONCURRENCY=" "$ROOT/.env"; then
   CONCURRENCY="$(grep "^CELERY_WORKER_CONCURRENCY=" "$ROOT/.env" | cut -d= -f2)"
 fi
+API_WORKERS="${API_UVICORN_WORKERS:-2}"
+if grep -q "^API_UVICORN_WORKERS=" "$ROOT/.env"; then
+  API_WORKERS="$(grep "^API_UVICORN_WORKERS=" "$ROOT/.env" | cut -d= -f2)"
+fi
 
-nohup "$PY" -m uvicorn app.main:app --host 0.0.0.0 --port 8000 \
+nohup "$PY" -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers "$API_WORKERS" \
   >"$LOG/cloud2-api.log" 2>"$LOG/cloud2-api.err.log" &
 echo $! > "$ROOT/data/hybrid/api.pid"
 
