@@ -1,0 +1,21 @@
+# Minimal dependencies for local dev mode (no Docker)
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.20
+sqlalchemy==2.0.36
+aiosqlite==0.20.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+apscheduler==3.10.4
+httpx[socks]==0.28.1
+httpcore[socks]==1.0.9
+socksio==1.0.0
+fake-useragent==1.5.1
+playwright==1.49.1
+yt-dlp>=2024.1.0
+pydantic==2.10.3
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+email-validator>=2.0.0
+Pillow>=10.0.0
