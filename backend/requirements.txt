@@ -24,6 +24,7 @@ celery==5.4.0
 apscheduler==3.10.4
 
 # HTTP & Scraping
+yt-dlp>=2024.1.0
 httpx[socks]==0.28.1
 httpcore[socks]==1.0.9
 socksio==1.0.0
